@@ -907,7 +907,7 @@ footer{
 <div class="qr-wrap">
   <div class="qr-title">📲 Compartí la carta</div>
   <div class="qr-sub">Escaneá para abrirla en tu celular</div>
-  <canvas id="qr-canvas" width="280" height="280" style="border-radius:16px;display:block;margin:0 auto 14px;"></canvas>
+  <div id="qr-canvas" style="display:inline-block;padding:14px;background:#ffffff;border-radius:16px;margin:0 auto 14px;line-height:0;"></div>
   <div class="qr-url" id="qr-url-txt"></div>
 </div>
 
@@ -959,176 +959,26 @@ footer{
   });
 })();
 
-/* ═══ QR CON DISEÑO — funcional ═══ */
+/* ═══ QR ESTÁNDAR — compatible con todos los celulares ═══ */
 const MENU_URL = "https://manrique2325.github.io/CARTA-RESTAURANTE-LUCA-S/";
 document.getElementById("qr-url-txt").textContent = MENU_URL;
 
 (function(){
-  const tempDiv = document.createElement('div');
-  tempDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
-  document.body.appendChild(tempDiv);
-
   try {
-    // Generar QR estándar con nivel H (30% corrección de error)
-    // Esto permite tapar hasta 30% del QR con el logo y seguir funcionando
-    new QRCode(tempDiv, {
+    new QRCode(document.getElementById("qr-canvas"), {
       text: MENU_URL,
-      width: 512,
-      height: 512,
+      width: 256,
+      height: 256,
       colorDark: "#000000",
       colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.H
     });
-
-    setTimeout(() => {
-      const canvas = document.getElementById('qr-canvas');
-      const ctx = canvas.getContext('2d');
-      const SIZE = 280;
-      canvas.width = SIZE;
-      canvas.height = SIZE;
-
-      // Fondo crema
-      ctx.fillStyle = '#fff8ec';
-      ctx.fillRect(0, 0, SIZE, SIZE);
-
-      const srcCanvas = tempDiv.querySelector('canvas');
-      const srcImg = tempDiv.querySelector('img');
-      const source = srcCanvas || srcImg;
-
-      const render = (src) => {
-        // Leer pixels del QR generado
-        const tmp = document.createElement('canvas');
-        tmp.width = 512; tmp.height = 512;
-        const tCtx = tmp.getContext('2d');
-        tCtx.drawImage(src, 0, 0, 512, 512);
-        const data = tCtx.getImageData(0, 0, 512, 512);
-
-        // QR con nivel H para URL de 56 chars → versión 5 = 37 módulos
-        // Detectar automáticamente la cantidad de módulos
-        // Buscando el primer módulo oscuro desde la esquina
-        let modPx = 0;
-        for(let i = 1; i < 512; i++){
-          const px = (i * 512 + i) * 4;
-          if(data.data[px] > 128){ modPx = i; break; }
-        }
-        if(!modPx) modPx = 14; // fallback
-
-        function isDark(row, col) {
-          const px = Math.round((col + 0.5) * modPx);
-          const py = Math.round((row + 0.5) * modPx);
-          if(px >= 512 || py >= 512) return false;
-          const i = (py * 512 + px) * 4;
-          return data.data[i] < 128;
-        }
-
-        // Detectar nModules
-        let nMod = Math.round(512 / modPx);
-        if(nMod < 21) nMod = 21;
-
-        const pad = 8;
-        const modSize = (SIZE - pad*2) / nMod;
-
-        const RED    = '#b2181a';
-        const ORANGE = '#f15a25';
-        const CREAM  = '#fff8ec';
-
-        // Zona del logo (centro) — que NO dibujamos módulos ahí
-        const cx = nMod / 2;
-        const cy = nMod / 2;
-        const logoZone = 5; // radio en módulos que reservamos para el logo
-
-        for (let r = 0; r < nMod; r++) {
-          for (let c = 0; c < nMod; c++) {
-            if (!isDark(r, c)) continue;
-
-            // No dibujar en la zona del logo central
-            const dr = Math.abs(r - cx);
-            const dc = Math.abs(c - cy);
-            if (dr <= logoZone && dc <= logoZone) continue;
-
-            const x = pad + c * modSize;
-            const y = pad + r * modSize;
-            const w = modSize - 0.8;
-            const rad = w * 0.3;
-
-            // Finder patterns en naranja
-            const isFinder = (r<7 && c<7) || (r<7 && c>=nMod-7) || (r>=nMod-7 && c<7);
-            ctx.fillStyle = isFinder ? ORANGE : RED;
-            ctx.beginPath();
-            if(ctx.roundRect) {
-              ctx.roundRect(x, y, w, w, rad);
-            } else {
-              ctx.rect(x, y, w, w);
-            }
-            ctx.fill();
-          }
-        }
-
-        // ── LOGO HORNITO en el centro ──
-        const lx = SIZE / 2;
-        const ly = SIZE / 2;
-        const lr = modSize * logoZone * 0.85;
-
-        // Fondo blanco circular
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(lx, ly, lr, 0, Math.PI*2);
-        ctx.fillStyle = CREAM;
-        ctx.fill();
-        ctx.strokeStyle = ORANGE;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-
-        // Chimenea
-        const chW = lr * 0.28, chH = lr * 0.45;
-        ctx.fillStyle = RED;
-        ctx.beginPath();
-        if(ctx.roundRect) ctx.roundRect(lx - chW/2, ly - lr*0.88, chW, chH, 2);
-        else ctx.rect(lx - chW/2, ly - lr*0.88, chW, chH);
-        ctx.fill();
-
-        // Cuerpo horno
-        ctx.fillStyle = RED;
-        ctx.beginPath();
-        ctx.arc(lx, ly + lr*0.1, lr*0.7, Math.PI, 0);
-        ctx.lineTo(lx + lr*0.7, ly + lr*0.55);
-        ctx.lineTo(lx - lr*0.7, ly + lr*0.55);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillRect(lx - lr*0.7, ly + lr*0.08, lr*1.4, lr*0.48);
-
-        // Llama naranja
-        ctx.fillStyle = ORANGE;
-        ctx.beginPath();
-        ctx.arc(lx, ly + lr*0.18, lr*0.35, Math.PI, 0);
-        ctx.lineTo(lx + lr*0.35, ly + lr*0.5);
-        ctx.lineTo(lx - lr*0.35, ly + lr*0.5);
-        ctx.closePath();
-        ctx.fill();
-
-        // Hueco crema
-        ctx.fillStyle = CREAM;
-        ctx.beginPath();
-        ctx.arc(lx, ly + lr*0.32, lr*0.13, 0, Math.PI*2);
-        ctx.fill();
-
-        document.body.removeChild(tempDiv);
-      };
-
-      if(srcCanvas) {
-        render(srcCanvas);
-      } else if(srcImg) {
-        if(srcImg.complete) render(srcImg);
-        else srcImg.onload = () => render(srcImg);
-      }
-
-    }, 300);
   } catch(e) {
     console.error('QR error:', e);
-    try { document.body.removeChild(tempDiv); } catch(_){}
   }
 })();
+
+
 
 /* ═══ VER CARTA BTN con transición wipe ═══ */
 const wipe=document.getElementById("wipe");
